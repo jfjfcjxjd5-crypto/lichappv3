@@ -124,8 +124,8 @@ function Main({ user, th, onLogout, onLogin }) {
             ))}
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <span title=<span className="hidden sm:inline">{sLabel}</span> className="flex items-center gap-1.5 truncate rounded-full bg-white px-3 py-1.5 text-xs text-neutral-500 dark:bg-neutral-900">
-              <SIcon size={13} className={sync === "sync" ? "animate-spin text-blue-500" : sync === "ok" ? "text-green-500" : ""} />{sLabel}
+            <span title={sLabel} className="flex items-center gap-1.5 truncate rounded-full bg-white px-3 py-1.5 text-xs text-neutral-500 dark:bg-neutral-900">
+              <SIcon size={13} className={sync === "sync" ? "animate-spin text-blue-500" : sync === "ok" ? "text-green-500" : ""} /><span className="hidden sm:inline">{sLabel}</span>
             </span>
             <ThemePicker th={th} />
             {remote ? (

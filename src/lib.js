@@ -1,9 +1,40 @@
 import { createClient } from "@supabase/supabase-js";
 
-const U = import.meta.env.VITE_SUPABASE_URL;
-const K = import.meta.env.VITE_SUPABASE_ANON_KEY;
+/* Chuẩn hóa biến môi trường: nguyên nhân phổ biến nhất của lỗi CORS khi đăng nhập
+   là VITE_SUPABASE_URL bị dán sai (có dấu nháy, khoảng trắng, "/" cuối, "/rest/v1",
+   hoặc dán link Dashboard thay cho Project URL). */
+const clean = (v) => String(v || "").trim().replace(/^['"]|['"]$/g, "").trim();
+export function normalizeUrl(raw) {
+  let u = clean(raw);
+  if (!u) return "";
+  // Link Dashboard: https://supabase.com/dashboard/project/<ref>/... -> https://<ref>.supabase.co
+  const dash = u.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  if (dash) return `https://${dash[1]}.supabase.co`;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  try {
+    const x = new URL(u);
+    return x.origin; // bỏ /rest/v1, /auth/v1, dấu "/" cuối...
+  } catch { return ""; }
+}
+const U = normalizeUrl(import.meta.env.VITE_SUPABASE_URL);
+const K = clean(import.meta.env.VITE_SUPABASE_ANON_KEY);
+export const SB_URL = U;
+// Khóa secret/service_role không được dùng trên trình duyệt (Supabase sẽ từ chối)
+export const SB_KEY_ERROR = /^sb_secret_/.test(K) ? "VITE_SUPABASE_ANON_KEY đang là khóa secret. Hãy dùng anon / publishable key." : null;
 // Không có khóa => sb = null => app tự chạy Offline/Demo (localStorage + IndexedDB)
 export const sb = U && K ? createClient(U, K) : null;
+
+/* Đổi lỗi mạng khó hiểu ("Failed to fetch" = trình duyệt chặn CORS / không tới được server) thành thông báo rõ ràng */
+export function explainAuthError(e) {
+  const m = String(e?.message || e || "");
+  if (/invalid login/i.test(m)) return "Sai email hoặc mật khẩu";
+  if (/email not confirmed/i.test(m)) return "Email chưa được xác nhận. Hãy mở email xác nhận rồi đăng nhập lại.";
+  if (/failed to fetch|networkerror|load failed|cors|fetch/i.test(m) || e?.name === "AuthRetryableFetchError") {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return "Không có mạng. Hãy kết nối Internet rồi thử lại.";
+    return `Không kết nối được tới Supabase (${U || "chưa cấu hình URL"}). Kiểm tra: VITE_SUPABASE_URL phải dạng https://<ref>.supabase.co, project không bị Pause, và đã Redeploy trên Vercel sau khi sửa biến môi trường.`;
+  }
+  return m || "Đã có lỗi, hãy thử lại";
+}
 
 export const EASE = [0.22, 1, 0.36, 1];
 export const pad = (n) => String(n).padStart(2, "0");
