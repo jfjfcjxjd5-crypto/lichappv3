@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays } from "lucide-react";
-import { sb, ui } from "./lib";
+import { sb, ui, explainAuthError, SB_KEY_ERROR } from "./lib";
 
 export default function Auth({ onSkip }) {
   const [mode, setMode] = useState("in");
@@ -12,20 +12,22 @@ export default function Auth({ onSkip }) {
 
   const submit = async () => {
     if (!email.trim() || pw.length < 6) return setMsg({ e: 1, t: "Nhập email và mật khẩu (tối thiểu 6 ký tự)" });
+    if (SB_KEY_ERROR) return setMsg({ e: 1, t: SB_KEY_ERROR });
     setBusy(true); setMsg(null);
     try {
       if (mode === "in") {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pw });
         if (error) throw error;
       } else {
-        const { data, error } = await sb.auth.signUp({ email: email.trim(), password: pw });
+        const { data, error } = await sb.auth.signUp({ email: email.trim(), password: pw, options: { emailRedirectTo: window.location.origin } });
         if (error) throw error;
         if (!data.session) setMsg({ t: "Đã gửi email xác nhận. Hãy mở email rồi quay lại đăng nhập." });
       }
     } catch (e) {
-      setMsg({ e: 1, t: /invalid login/i.test(e.message) ? "Sai email hoặc mật khẩu" : e.message });
+      setMsg({ e: 1, t: explainAuthError(e) });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (
